@@ -10,7 +10,6 @@ from sqlalchemy.sql import func
 
 class UserRole(str, enum.Enum):
     admin = "Admin"
-    broker = "Broker"
     user = "User"  # Added standard user role
 
 
@@ -64,7 +63,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.broker)
+    role = Column(Enum(UserRole, values_callable=lambda enum: [e.value for e in enum]), default=UserRole.user)
     
     # Extended user profile fields
     full_name = Column(String, nullable=True)
@@ -82,10 +81,6 @@ class User(Base):
     alcohol_consumption = Column(Enum(AlcoholConsumption), nullable=True)
     user_status = Column(Enum(UserStatus), default=UserStatus.active)
     
-    # Original fields
-    is_email_verified = Column(Boolean, default=False)
-    is_2fa_enabled = Column(Boolean, default=False)
-    last_login_at = Column(DateTime(timezone=True))
     refresh_token = Column(String, nullable=True)
     
     # Audit fields

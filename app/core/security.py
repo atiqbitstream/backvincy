@@ -7,11 +7,12 @@ from app.models import User
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = HTTPBearer()
 
 
 def verify_password(plain_password, hashed_password):
@@ -64,24 +65,21 @@ def extract_email_from_token(token: str) -> str:
 db_dependency = Depends(get_db)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = db_dependency):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme), db: Session = db_dependency):
+    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    if email is None:
-        raise ValueError("Email must not be None")
     user = get_user_by_email(db, email)
     if user is None:
         raise credentials_exception

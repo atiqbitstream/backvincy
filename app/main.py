@@ -1,5 +1,6 @@
-from app.api import  auth_routes, user_routes
+from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes
 from app.db.base import Base, engine
+
 from fastapi import FastAPI
 from app.models import * 
 
@@ -13,4 +14,5 @@ app = FastAPI(
 
 app.include_router(auth_routes.router)
 app.include_router(user_routes.router)
-
+app.include_router(device_controls_routes.router)
+app.include_router(health_monitoring_routes.router)

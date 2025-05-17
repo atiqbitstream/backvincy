@@ -1,0 +1,1892 @@
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\.env
+
+DATABASE_URL=postgresql://postgres:root@localhost:5432/vince
+
+SECRET_KEY=your-super-secret-key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_MINUTES=1440
+
+
+
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\main.py
+
+from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes
+from app.db.base import Base, engine
+
+from fastapi import FastAPI
+from app.models import * 
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title="FortiFund Backend",
+    description="Backend API for FortiFund platform",
+    version="1.0.0",
+)
+
+app.include_router(auth_routes.router)
+app.include_router(user_routes.router)
+app.include_router(device_controls_routes.router)
+app.include_router(health_monitoring_routes.router)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\__init__.py
+
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\api\auth_routes.py
+
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models import User
+from app.schemas import Token, UserCreate, UserOut
+from app.services.user_service import (handle_login, handle_logout,
+                                       handle_signup, handle_token_refresh)
+from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
+
+router = APIRouter(tags=["auth"])
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+# Reusable dependencies
+get_db_dep = Depends(get_db)
+get_current_user_dep = Depends(get_current_user)
+
+
+@router.post("/signup", response_model=UserOut)
+def signup(user: UserCreate, db: Session = get_db_dep):
+    return handle_signup(user, db)
+
+
+@router.post("/login", response_model=Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = get_db_dep):
+    return JSONResponse(content=handle_login(form_data.username, form_data.password, db))
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(refresh_token: str, db: Session = get_db_dep):
+    return handle_token_refresh(refresh_token, db)
+
+
+@router.post("/logout")
+def logout(
+    current_user: User = get_current_user_dep,
+    db: Session = get_db_dep,
+    token: str = Security(oauth2_scheme),
+):
+    return handle_logout(current_user, db)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\api\device_controls_routes.py
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from uuid import UUID
+
+from app.db.base import get_db
+from app.core.security import get_current_user
+from app.models import User
+from app.crud import device_controls as crud
+from app.schemas import (
+    SoundCreate, SoundUpdate, SoundOut,
+    SteamCreate, SteamUpdate, SteamOut,
+    TempTankCreate, TempTankUpdate, TempTankOut,
+    WaterPumpCreate, WaterPumpUpdate, WaterPumpOut,
+    NanoFlickerCreate, NanoFlickerUpdate, NanoFlickerOut,
+    LedColorCreate, LedColorUpdate, LedColorOut,
+)
+
+router = APIRouter(prefix="/device-controls", tags=["Device Controls"])
+
+# Utility dependency
+def user_dep():
+    return Depends(get_current_user)
+
+# === SOUND ===
+@router.post("/sound", response_model=SoundOut)
+def create_sound(sound: SoundCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_sound(db, sound)
+
+@router.get("/sound/{sound_id}", response_model=SoundOut)
+def get_sound(sound_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    sound = crud.get_sound(db, sound_id)
+    if not sound:
+        raise HTTPException(status_code=404, detail="Sound not found")
+    return sound
+
+@router.put("/sound/{sound_id}", response_model=SoundOut)
+def update_sound(sound_id: UUID, sound: SoundUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_sound(db, sound_id, sound)
+
+@router.delete("/sound/{sound_id}")
+def delete_sound(sound_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_sound(db, sound_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Sound not found")
+    return {"detail": "Sound deleted successfully"}
+
+
+# === STEAM ===
+@router.post("/steam", response_model=SteamOut)
+def create_steam(steam: SteamCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_steam(db, steam)
+
+@router.get("/steam/{steam_id}", response_model=SteamOut)
+def get_steam(steam_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    steam = crud.get_steam(db, steam_id)
+    if not steam:
+        raise HTTPException(status_code=404, detail="Steam not found")
+    return steam
+
+@router.put("/steam/{steam_id}", response_model=SteamOut)
+def update_steam(steam_id: UUID, steam: SteamUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_steam(db, steam_id, steam)
+
+@router.delete("/steam/{steam_id}")
+def delete_steam(steam_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_steam(db, steam_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Steam not found")
+    return {"detail": "Steam deleted successfully"}
+
+
+# === TEMP TANK ===
+@router.post("/temp-tank", response_model=TempTankOut)
+def create_temp_tank(data: TempTankCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_temp_tank(db, data)
+
+@router.get("/temp-tank/{id}", response_model=TempTankOut)
+def get_temp_tank(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_temp_tank(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="TempTank not found")
+    return obj
+
+@router.put("/temp-tank/{id}", response_model=TempTankOut)
+def update_temp_tank(id: UUID, update: TempTankUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_temp_tank(db, id, update)
+
+@router.delete("/temp-tank/{id}")
+def delete_temp_tank(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_temp_tank(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="TempTank not found")
+    return {"detail": "TempTank deleted successfully"}
+
+
+# === WATER PUMP ===
+@router.post("/water-pump", response_model=WaterPumpOut)
+def create_water_pump(data: WaterPumpCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_water_pump(db, data)
+
+@router.get("/water-pump/{id}", response_model=WaterPumpOut)
+def get_water_pump(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_water_pump(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="WaterPump not found")
+    return obj
+
+@router.put("/water-pump/{id}", response_model=WaterPumpOut)
+def update_water_pump(id: UUID, update: WaterPumpUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_water_pump(db, id, update)
+
+@router.delete("/water-pump/{id}")
+def delete_water_pump(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_water_pump(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="WaterPump not found")
+    return {"detail": "WaterPump deleted successfully"}
+
+
+# === NANO FLICKER ===
+@router.post("/nano-flicker", response_model=NanoFlickerOut)
+def create_nano_flicker(data: NanoFlickerCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_nano_flicker(db, data)
+
+@router.get("/nano-flicker/{id}", response_model=NanoFlickerOut)
+def get_nano_flicker(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_nano_flicker(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="NanoFlicker not found")
+    return obj
+
+@router.put("/nano-flicker/{id}", response_model=NanoFlickerOut)
+def update_nano_flicker(id: UUID, update: NanoFlickerUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_nano_flicker(db, id, update)
+
+@router.delete("/nano-flicker/{id}")
+def delete_nano_flicker(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_nano_flicker(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="NanoFlicker not found")
+    return {"detail": "NanoFlicker deleted successfully"}
+
+
+# === LED COLOR ===
+@router.post("/led-color", response_model=LedColorOut)
+def create_led_color(data: LedColorCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_led_color(db, data)
+
+@router.get("/led-color/{id}", response_model=LedColorOut)
+def get_led_color(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_led_color(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="LedColor not found")
+    return obj
+
+@router.put("/led-color/{id}", response_model=LedColorOut)
+def update_led_color(id: UUID, update: LedColorUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_led_color(db, id, update)
+
+@router.delete("/led-color/{id}")
+def delete_led_color(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_led_color(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="LedColor not found")
+    return {"detail": "LedColor deleted successfully"}
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\api\health_monitoring_routes.py
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from uuid import UUID
+
+from app.db.base import get_db
+from app.core.security import get_current_user
+from app.models import User
+from app.crud import health_monitoring as crud
+from app.schemas import (
+    BiofeedbackCreate, BiofeedbackUpdate, BiofeedbackOut,
+    BurnProgressCreate, BurnProgressUpdate, BurnProgressOut,
+    BrainMonitoringCreate, BrainMonitoringUpdate, BrainMonitoringOut,
+    HeartBrainSynchronicityCreate, HeartBrainSynchronicityUpdate, HeartBrainSynchronicityOut,
+)
+
+router = APIRouter(prefix="/health-monitoring", tags=["Health Monitoring"])
+
+# === BIOFEEDBACK ===
+@router.post("/biofeedback", response_model=BiofeedbackOut)
+def create_biofeedback(data: BiofeedbackCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_biofeedback(db, data)
+
+@router.get("/biofeedback/{id}", response_model=BiofeedbackOut)
+def get_biofeedback(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_biofeedback(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Biofeedback not found")
+    return obj
+
+@router.put("/biofeedback/{id}", response_model=BiofeedbackOut)
+def update_biofeedback(id: UUID, update: BiofeedbackUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_biofeedback(db, id, update)
+
+@router.delete("/biofeedback/{id}")
+def delete_biofeedback(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_biofeedback(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Biofeedback not found")
+    return {"detail": "Biofeedback deleted successfully"}
+
+
+# === BURN PROGRESS ===
+@router.post("/burn-progress", response_model=BurnProgressOut)
+def create_burn_progress(data: BurnProgressCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_burn_progress(db, data)
+
+@router.get("/burn-progress/{id}", response_model=BurnProgressOut)
+def get_burn_progress(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_burn_progress(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="BurnProgress not found")
+    return obj
+
+@router.put("/burn-progress/{id}", response_model=BurnProgressOut)
+def update_burn_progress(id: UUID, update: BurnProgressUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_burn_progress(db, id, update)
+
+@router.delete("/burn-progress/{id}")
+def delete_burn_progress(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_burn_progress(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="BurnProgress not found")
+    return {"detail": "BurnProgress deleted successfully"}
+
+
+# === BRAIN MONITORING ===
+@router.post("/brain-monitoring", response_model=BrainMonitoringOut)
+def create_brain_monitoring(data: BrainMonitoringCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_brain_monitoring(db, data)
+
+@router.get("/brain-monitoring/{id}", response_model=BrainMonitoringOut)
+def get_brain_monitoring(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_brain_monitoring(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="BrainMonitoring not found")
+    return obj
+
+@router.put("/brain-monitoring/{id}", response_model=BrainMonitoringOut)
+def update_brain_monitoring(id: UUID, update: BrainMonitoringUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_brain_monitoring(db, id, update)
+
+@router.delete("/brain-monitoring/{id}")
+def delete_brain_monitoring(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_brain_monitoring(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="BrainMonitoring not found")
+    return {"detail": "BrainMonitoring deleted successfully"}
+
+
+# === HEART-BRAIN SYNCHRONICITY ===
+@router.post("/heart-brain-synchronicity", response_model=HeartBrainSynchronicityOut)
+def create_heart_brain(data: HeartBrainSynchronicityCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.create_heart_brain_synchronicity(db, data)
+
+@router.get("/heart-brain-synchronicity/{id}", response_model=HeartBrainSynchronicityOut)
+def get_heart_brain(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    obj = crud.get_heart_brain_synchronicity(db, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="HeartBrainSynchronicity not found")
+    return obj
+
+@router.put("/heart-brain-synchronicity/{id}", response_model=HeartBrainSynchronicityOut)
+def update_heart_brain(id: UUID, update: HeartBrainSynchronicityUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return crud.update_heart_brain_synchronicity(db, id, update)
+
+@router.delete("/heart-brain-synchronicity/{id}")
+def delete_heart_brain(id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    success = crud.delete_heart_brain_synchronicity(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="HeartBrainSynchronicity not found")
+    return {"detail": "HeartBrainSynchronicity deleted successfully"}
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\api\user_routes.py
+
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models import User
+from app.schemas import UserOut
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+router = APIRouter(tags=["users"])
+
+
+@router.get("/users/me", response_model=UserOut)
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\api\__init__.py
+
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\core\config.py
+
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440
+    
+
+    class Config:
+        env_file = ".env"
+
+
+settings = Settings()
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\core\security.py
+
+from datetime import datetime, timedelta, timezone
+
+from app.core.config import settings
+from app.crud.user import get_user_by_email
+from app.db.base import get_db
+from app.models import User
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = HTTPBearer()
+
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def password_hash(password):
+    return pwd_context.hash(password)
+
+
+def create_jwt_token(data: dict, expiry_minutes: int) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expiry_minutes)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_access_token(data: dict) -> str:
+    return create_jwt_token(data, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+
+def create_refresh_token(data: dict) -> str:
+    return create_jwt_token(data, settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+
+
+def authenticate_user(db: Session, email: str, password: str):
+    user = get_user_by_email(db, email)
+    if not user:
+        return False
+    if not verify_password(password, user.password_hash):
+        return False
+    return user
+
+
+def extract_email_from_token(token: str) -> str:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        email = payload.get("sub")
+        if not email:
+            raise ValueError
+        return email
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
+
+
+db_dependency = Depends(get_db)
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme), db: Session = db_dependency):
+    token = credentials.credentials
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user_by_email(db, email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+def require_role(required_roles: list[str]):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in required_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource",
+            )
+        return current_user
+
+    return role_checker
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\crud\device_controls.py
+
+from uuid import UUID
+from typing import List, Optional
+
+from sqlalchemy.orm import Session
+
+from app.models import Sound, Steam, TempTank, WaterPump, NanoFlicker, LedColor
+from app.schemas.device_controls import (
+    SoundCreate, SoundUpdate,
+    SteamCreate, SteamUpdate,
+    TempTankCreate, TempTankUpdate,
+    WaterPumpCreate, WaterPumpUpdate,
+    NanoFlickerCreate, NanoFlickerUpdate,
+    LedColorCreate, LedColorUpdate
+)
+
+
+# Sound CRUD operations
+def create_sound(db: Session, sound: SoundCreate) -> Sound:
+    db_sound = Sound(
+        sound=sound.sound,
+        user_email=sound.user_email,
+        created_by=sound.created_by
+    )
+    db.add(db_sound)
+    db.commit()
+    db.refresh(db_sound)
+    return db_sound
+
+
+def get_sound(db: Session, sound_id: UUID) -> Optional[Sound]:
+    return db.query(Sound).filter(Sound.id == sound_id).first()
+
+
+def get_sound_by_user_email(db: Session, user_email: str) -> Optional[Sound]:
+    return db.query(Sound).filter(Sound.user_email == user_email).order_by(Sound.created_at.desc()).first()
+
+
+def get_sounds_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[Sound]:
+    return db.query(Sound).filter(Sound.user_email == user_email).order_by(Sound.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_sound(db: Session, sound_id: UUID, sound_update: SoundUpdate) -> Optional[Sound]:
+    db_sound = get_sound(db, sound_id)
+    if db_sound:
+        update_data = sound_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_sound, key, value)
+        db.commit()
+        db.refresh(db_sound)
+    return db_sound
+
+
+def delete_sound(db: Session, sound_id: UUID) -> bool:
+    db_sound = get_sound(db, sound_id)
+    if db_sound:
+        db.delete(db_sound)
+        db.commit()
+        return True
+    return False
+
+
+# Steam CRUD operations
+def create_steam(db: Session, steam: SteamCreate) -> Steam:
+    db_steam = Steam(
+        steam=steam.steam,
+        user_email=steam.user_email,
+        created_by=steam.created_by
+    )
+    db.add(db_steam)
+    db.commit()
+    db.refresh(db_steam)
+    return db_steam
+
+
+def get_steam(db: Session, steam_id: UUID) -> Optional[Steam]:
+    return db.query(Steam).filter(Steam.id == steam_id).first()
+
+
+def get_steam_by_user_email(db: Session, user_email: str) -> Optional[Steam]:
+    return db.query(Steam).filter(Steam.user_email == user_email).order_by(Steam.created_at.desc()).first()
+
+
+def get_steams_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[Steam]:
+    return db.query(Steam).filter(Steam.user_email == user_email).order_by(Steam.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_steam(db: Session, steam_id: UUID, steam_update: SteamUpdate) -> Optional[Steam]:
+    db_steam = get_steam(db, steam_id)
+    if db_steam:
+        update_data = steam_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_steam, key, value)
+        db.commit()
+        db.refresh(db_steam)
+    return db_steam
+
+
+def delete_steam(db: Session, steam_id: UUID) -> bool:
+    db_steam = get_steam(db, steam_id)
+    if db_steam:
+        db.delete(db_steam)
+        db.commit()
+        return True
+    return False
+
+
+# TempTank CRUD operations
+def create_temp_tank(db: Session, temp_tank: TempTankCreate) -> TempTank:
+    db_temp_tank = TempTank(
+        temp_tank=temp_tank.temp_tank,
+        user_email=temp_tank.user_email,
+        created_by=temp_tank.created_by
+    )
+    db.add(db_temp_tank)
+    db.commit()
+    db.refresh(db_temp_tank)
+    return db_temp_tank
+
+
+def get_temp_tank(db: Session, temp_tank_id: UUID) -> Optional[TempTank]:
+    return db.query(TempTank).filter(TempTank.id == temp_tank_id).first()
+
+
+def get_temp_tank_by_user_email(db: Session, user_email: str) -> Optional[TempTank]:
+    return db.query(TempTank).filter(TempTank.user_email == user_email).order_by(TempTank.created_at.desc()).first()
+
+
+def get_temp_tanks_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[TempTank]:
+    return db.query(TempTank).filter(TempTank.user_email == user_email).order_by(TempTank.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_temp_tank(db: Session, temp_tank_id: UUID, temp_tank_update: TempTankUpdate) -> Optional[TempTank]:
+    db_temp_tank = get_temp_tank(db, temp_tank_id)
+    if db_temp_tank:
+        update_data = temp_tank_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_temp_tank, key, value)
+        db.commit()
+        db.refresh(db_temp_tank)
+    return db_temp_tank
+
+
+def delete_temp_tank(db: Session, temp_tank_id: UUID) -> bool:
+    db_temp_tank = get_temp_tank(db, temp_tank_id)
+    if db_temp_tank:
+        db.delete(db_temp_tank)
+        db.commit()
+        return True
+    return False
+
+
+# WaterPump CRUD operations
+def create_water_pump(db: Session, water_pump: WaterPumpCreate) -> WaterPump:
+    db_water_pump = WaterPump(
+        water_pump=water_pump.water_pump,
+        user_email=water_pump.user_email,
+        created_by=water_pump.created_by
+    )
+    db.add(db_water_pump)
+    db.commit()
+    db.refresh(db_water_pump)
+    return db_water_pump
+
+
+def get_water_pump(db: Session, water_pump_id: UUID) -> Optional[WaterPump]:
+    return db.query(WaterPump).filter(WaterPump.id == water_pump_id).first()
+
+
+def get_water_pump_by_user_email(db: Session, user_email: str) -> Optional[WaterPump]:
+    return db.query(WaterPump).filter(WaterPump.user_email == user_email).order_by(WaterPump.created_at.desc()).first()
+
+
+def get_water_pumps_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[WaterPump]:
+    return db.query(WaterPump).filter(WaterPump.user_email == user_email).order_by(WaterPump.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_water_pump(db: Session, water_pump_id: UUID, water_pump_update: WaterPumpUpdate) -> Optional[WaterPump]:
+    db_water_pump = get_water_pump(db, water_pump_id)
+    if db_water_pump:
+        update_data = water_pump_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_water_pump, key, value)
+        db.commit()
+        db.refresh(db_water_pump)
+    return db_water_pump
+
+
+def delete_water_pump(db: Session, water_pump_id: UUID) -> bool:
+    db_water_pump = get_water_pump(db, water_pump_id)
+    if db_water_pump:
+        db.delete(db_water_pump)
+        db.commit()
+        return True
+    return False
+
+
+# NanoFlicker CRUD operations
+def create_nano_flicker(db: Session, nano_flicker: NanoFlickerCreate) -> NanoFlicker:
+    db_nano_flicker = NanoFlicker(
+        nano_flicker=nano_flicker.nano_flicker,
+        user_email=nano_flicker.user_email,
+        created_by=nano_flicker.created_by
+    )
+    db.add(db_nano_flicker)
+    db.commit()
+    db.refresh(db_nano_flicker)
+    return db_nano_flicker
+
+
+def get_nano_flicker(db: Session, nano_flicker_id: UUID) -> Optional[NanoFlicker]:
+    return db.query(NanoFlicker).filter(NanoFlicker.id == nano_flicker_id).first()
+
+
+def get_nano_flicker_by_user_email(db: Session, user_email: str) -> Optional[NanoFlicker]:
+    return db.query(NanoFlicker).filter(NanoFlicker.user_email == user_email).order_by(NanoFlicker.created_at.desc()).first()
+
+
+def get_nano_flickers_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[NanoFlicker]:
+    return db.query(NanoFlicker).filter(NanoFlicker.user_email == user_email).order_by(NanoFlicker.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_nano_flicker(db: Session, nano_flicker_id: UUID, nano_flicker_update: NanoFlickerUpdate) -> Optional[NanoFlicker]:
+    db_nano_flicker = get_nano_flicker(db, nano_flicker_id)
+    if db_nano_flicker:
+        update_data = nano_flicker_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_nano_flicker, key, value)
+        db.commit()
+        db.refresh(db_nano_flicker)
+    return db_nano_flicker
+
+
+def delete_nano_flicker(db: Session, nano_flicker_id: UUID) -> bool:
+    db_nano_flicker = get_nano_flicker(db, nano_flicker_id)
+    if db_nano_flicker:
+        db.delete(db_nano_flicker)
+        db.commit()
+        return True
+    return False
+
+
+# LedColor CRUD operations
+def create_led_color(db: Session, led_color: LedColorCreate) -> LedColor:
+    db_led_color = LedColor(
+        led_color=led_color.led_color,
+        user_email=led_color.user_email,
+        created_by=led_color.created_by
+    )
+    db.add(db_led_color)
+    db.commit()
+    db.refresh(db_led_color)
+    return db_led_color
+
+
+def get_led_color(db: Session, led_color_id: UUID) -> Optional[LedColor]:
+    return db.query(LedColor).filter(LedColor.id == led_color_id).first()
+
+
+def get_led_color_by_user_email(db: Session, user_email: str) -> Optional[LedColor]:
+    return db.query(LedColor).filter(LedColor.user_email == user_email).order_by(LedColor.created_at.desc()).first()
+
+
+def get_led_colors_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[LedColor]:
+    return db.query(LedColor).filter(LedColor.user_email == user_email).order_by(LedColor.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_led_color(db: Session, led_color_id: UUID, led_color_update: LedColorUpdate) -> Optional[LedColor]:
+    db_led_color = get_led_color(db, led_color_id)
+    if db_led_color:
+        update_data = led_color_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_led_color, key, value)
+        db.commit()
+        db.refresh(db_led_color)
+    return db_led_color
+
+
+def delete_led_color(db: Session, led_color_id: UUID) -> bool:
+    db_led_color = get_led_color(db, led_color_id)
+    if db_led_color:
+        db.delete(db_led_color)
+        db.commit()
+        return True
+    return False
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\crud\health_monitoring.py
+
+from uuid import UUID
+from typing import List, Optional
+
+from sqlalchemy.orm import Session
+
+from app.models import Biofeedback, BurnProgress, BrainMonitoring, HeartBrainSynchronicity
+from app.schemas.health_monitoring import (
+    BiofeedbackCreate, BiofeedbackUpdate,
+    BurnProgressCreate, BurnProgressUpdate,
+    BrainMonitoringCreate, BrainMonitoringUpdate,
+    HeartBrainSynchronicityCreate, HeartBrainSynchronicityUpdate
+)
+
+
+# Biofeedback CRUD operations
+def create_biofeedback(db: Session, biofeedback: BiofeedbackCreate) -> Biofeedback:
+    db_biofeedback = Biofeedback(
+        heart_rate=biofeedback.heart_rate,
+        heart_rate_variability=biofeedback.heart_rate_variability,
+        electromyography=biofeedback.electromyography,
+        electrodermal_activity=biofeedback.electrodermal_activity,
+        respiration_rate=biofeedback.respiration_rate,
+        blood_pressure=biofeedback.blood_pressure,
+        temperature=biofeedback.temperature,
+        brainwave_activity=biofeedback.brainwave_activity,
+        oxygen_saturation=biofeedback.oxygen_saturation,
+        blood_glucose_levels=biofeedback.blood_glucose_levels,
+        galvanic_skin_response=biofeedback.galvanic_skin_response,
+        user_email=biofeedback.user_email,
+        created_by=biofeedback.created_by
+    )
+    db.add(db_biofeedback)
+    db.commit()
+    db.refresh(db_biofeedback)
+    return db_biofeedback
+
+
+def get_biofeedback(db: Session, biofeedback_id: UUID) -> Optional[Biofeedback]:
+    return db.query(Biofeedback).filter(Biofeedback.id == biofeedback_id).first()
+
+
+def get_biofeedback_by_user_email(db: Session, user_email: str) -> Optional[Biofeedback]:
+    return db.query(Biofeedback).filter(Biofeedback.user_email == user_email).order_by(Biofeedback.created_at.desc()).first()
+
+
+def get_biofeedbacks_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[Biofeedback]:
+    return db.query(Biofeedback).filter(Biofeedback.user_email == user_email).order_by(Biofeedback.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_biofeedback(db: Session, biofeedback_id: UUID, biofeedback_update: BiofeedbackUpdate) -> Optional[Biofeedback]:
+    db_biofeedback = get_biofeedback(db, biofeedback_id)
+    if db_biofeedback:
+        update_data = biofeedback_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_biofeedback, key, value)
+        db.commit()
+        db.refresh(db_biofeedback)
+    return db_biofeedback
+
+
+def delete_biofeedback(db: Session, biofeedback_id: UUID) -> bool:
+    db_biofeedback = get_biofeedback(db, biofeedback_id)
+    if db_biofeedback:
+        db.delete(db_biofeedback)
+        db.commit()
+        return True
+    return False
+
+
+# BurnProgress CRUD operations
+def create_burn_progress(db: Session, burn_progress: BurnProgressCreate) -> BurnProgress:
+    db_burn_progress = BurnProgress(
+        wound_size_depth=burn_progress.wound_size_depth,
+        epithelialization=burn_progress.epithelialization,
+        exudate_amount_type=burn_progress.exudate_amount_type,
+        infection_indicators=burn_progress.infection_indicators,
+        granulation_tissue=burn_progress.granulation_tissue,
+        pain_levels=burn_progress.pain_levels,
+        swelling_edema=burn_progress.swelling_edema,
+        scarring=burn_progress.scarring,
+        functional_recovery=burn_progress.functional_recovery,
+        color_changes=burn_progress.color_changes,
+        temperature_wound_site=burn_progress.temperature_wound_site,
+        blood_flow_perfusion=burn_progress.blood_flow_perfusion,
+        nutritional_status=burn_progress.nutritional_status,
+        systemic_indicators=burn_progress.systemic_indicators,
+        user_email=burn_progress.user_email,
+        created_by=burn_progress.created_by
+    )
+    db.add(db_burn_progress)
+    db.commit()
+    db.refresh(db_burn_progress)
+    return db_burn_progress
+
+
+def get_burn_progress(db: Session, burn_progress_id: UUID) -> Optional[BurnProgress]:
+    return db.query(BurnProgress).filter(BurnProgress.id == burn_progress_id).first()
+
+
+def get_burn_progress_by_user_email(db: Session, user_email: str) -> Optional[BurnProgress]:
+    return db.query(BurnProgress).filter(BurnProgress.user_email == user_email).order_by(BurnProgress.created_at.desc()).first()
+
+
+def get_burn_progresses_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[BurnProgress]:
+    return db.query(BurnProgress).filter(BurnProgress.user_email == user_email).order_by(BurnProgress.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_burn_progress(db: Session, burn_progress_id: UUID, burn_progress_update: BurnProgressUpdate) -> Optional[BurnProgress]:
+    db_burn_progress = get_burn_progress(db, burn_progress_id)
+    if db_burn_progress:
+        update_data = burn_progress_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_burn_progress, key, value)
+        db.commit()
+        db.refresh(db_burn_progress)
+    return db_burn_progress
+
+
+def delete_burn_progress(db: Session, burn_progress_id: UUID) -> bool:
+    db_burn_progress = get_burn_progress(db, burn_progress_id)
+    if db_burn_progress:
+        db.delete(db_burn_progress)
+        db.commit()
+        return True
+    return False
+
+
+# BrainMonitoring CRUD operations
+def create_brain_monitoring(db: Session, brain_monitoring: BrainMonitoringCreate) -> BrainMonitoring:
+    db_brain_monitoring = BrainMonitoring(
+        alpha_waves=brain_monitoring.alpha_waves,
+        theta_waves=brain_monitoring.theta_waves,
+        beta_waves=brain_monitoring.beta_waves,
+        gamma_waves=brain_monitoring.gamma_waves,
+        heart_rate=brain_monitoring.heart_rate,
+        heart_rate_variability=brain_monitoring.heart_rate_variability,
+        electromyography=brain_monitoring.electromyography,
+        respiration_rate=brain_monitoring.respiration_rate,
+        electrodermal_activity=brain_monitoring.electrodermal_activity,
+        peripheral_skin_temperature=brain_monitoring.peripheral_skin_temperature,
+        user_email=brain_monitoring.user_email,
+        created_by=brain_monitoring.created_by
+    )
+    db.add(db_brain_monitoring)
+    db.commit()
+    db.refresh(db_brain_monitoring)
+    return db_brain_monitoring
+
+
+def get_brain_monitoring(db: Session, brain_monitoring_id: UUID) -> Optional[BrainMonitoring]:
+    return db.query(BrainMonitoring).filter(BrainMonitoring.id == brain_monitoring_id).first()
+
+
+def get_brain_monitoring_by_user_email(db: Session, user_email: str) -> Optional[BrainMonitoring]:
+    return db.query(BrainMonitoring).filter(BrainMonitoring.user_email == user_email).order_by(BrainMonitoring.created_at.desc()).first()
+
+
+def get_brain_monitorings_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[BrainMonitoring]:
+    return db.query(BrainMonitoring).filter(BrainMonitoring.user_email == user_email).order_by(BrainMonitoring.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_brain_monitoring(db: Session, brain_monitoring_id: UUID, brain_monitoring_update: BrainMonitoringUpdate) -> Optional[BrainMonitoring]:
+    db_brain_monitoring = get_brain_monitoring(db, brain_monitoring_id)
+    if db_brain_monitoring:
+        update_data = brain_monitoring_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_brain_monitoring, key, value)
+        db.commit()
+        db.refresh(db_brain_monitoring)
+    return db_brain_monitoring
+
+
+def delete_brain_monitoring(db: Session, brain_monitoring_id: UUID) -> bool:
+    db_brain_monitoring = get_brain_monitoring(db, brain_monitoring_id)
+    if db_brain_monitoring:
+        db.delete(db_brain_monitoring)
+        db.commit()
+        return True
+    return False
+
+
+# HeartBrainSynchronicity CRUD operations
+def create_heart_brain_synchronicity(db: Session, heart_brain_synchronicity: HeartBrainSynchronicityCreate) -> HeartBrainSynchronicity:
+    db_heart_brain_synchronicity = HeartBrainSynchronicity(
+        heart_rate_variability=heart_brain_synchronicity.heart_rate_variability,
+        alpha_waves=heart_brain_synchronicity.alpha_waves,
+        respiratory_sinus_arrhythmia=heart_brain_synchronicity.respiratory_sinus_arrhythmia,
+        coherence_ratio=heart_brain_synchronicity.coherence_ratio,
+        brainwave_coherence=heart_brain_synchronicity.brainwave_coherence,
+        blood_pressure_variability=heart_brain_synchronicity.blood_pressure_variability,
+        electrodermal_activity=heart_brain_synchronicity.electrodermal_activity,
+        breathing_patterns=heart_brain_synchronicity.breathing_patterns,
+        subjective_measures=heart_brain_synchronicity.subjective_measures,
+        user_email=heart_brain_synchronicity.user_email,
+        created_by=heart_brain_synchronicity.created_by
+    )
+    db.add(db_heart_brain_synchronicity)
+    db.commit()
+    db.refresh(db_heart_brain_synchronicity)
+    return db_heart_brain_synchronicity
+
+
+def get_heart_brain_synchronicity(db: Session, heart_brain_synchronicity_id: UUID) -> Optional[HeartBrainSynchronicity]:
+    return db.query(HeartBrainSynchronicity).filter(HeartBrainSynchronicity.id == heart_brain_synchronicity_id).first()
+
+
+def get_heart_brain_synchronicity_by_user_email(db: Session, user_email: str) -> Optional[HeartBrainSynchronicity]:
+    return db.query(HeartBrainSynchronicity).filter(HeartBrainSynchronicity.user_email == user_email).order_by(HeartBrainSynchronicity.created_at.desc()).first()
+
+
+def get_heart_brain_synchronicities_by_user_email(db: Session, user_email: str, skip: int = 0, limit: int = 100) -> List[HeartBrainSynchronicity]:
+    return db.query(HeartBrainSynchronicity).filter(HeartBrainSynchronicity.user_email == user_email).order_by(HeartBrainSynchronicity.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def update_heart_brain_synchronicity(db: Session, heart_brain_synchronicity_id: UUID, heart_brain_synchronicity_update: HeartBrainSynchronicityUpdate) -> Optional[HeartBrainSynchronicity]:
+    db_heart_brain_synchronicity = get_heart_brain_synchronicity(db, heart_brain_synchronicity_id)
+    if db_heart_brain_synchronicity:
+        update_data = heart_brain_synchronicity_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_heart_brain_synchronicity, key, value)
+        db.commit()
+        db.refresh(db_heart_brain_synchronicity)
+    return db_heart_brain_synchronicity
+
+
+def delete_heart_brain_synchronicity(db: Session, heart_brain_synchronicity_id: UUID) -> bool:
+    db_heart_brain_synchronicity = get_heart_brain_synchronicity(db, heart_brain_synchronicity_id)
+    if db_heart_brain_synchronicity:
+        db.delete(db_heart_brain_synchronicity)
+        db.commit()
+        return True
+    return False
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\crud\user.py
+
+from app.models import User
+from app.schemas import UserCreate
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def create_user(db: Session, user: UserCreate):
+    hashed_password = get_password_hash(user.password)
+    db_user = User(email=user.email, password_hash=hashed_password, role=user.role)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
+
+
+def set_refresh_token(db: Session, user: User, token: str):
+    user.refresh_token = token
+    db.commit()
+    db.refresh(user)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\db\base.py
+
+import os
+
+from app.core.config import settings
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(settings.DATABASE_URL or "", echo=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\models\device_controls.py
+
+import uuid
+from app.db.base import Base
+from sqlalchemy import Boolean, Column, DateTime, Float, String, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+
+
+class Sound(Base):
+    __tablename__ = "sounds"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    sound = Column(Boolean, nullable=False, default=False)  # 1/0 as bit
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class Steam(Base):
+    __tablename__ = "steams"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    steam = Column(Boolean, nullable=False, default=False)  # 1/0 as bit
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class TempTank(Base):
+    __tablename__ = "temp_tanks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    temp_tank = Column(Float, nullable=False)  # temperature in celsius
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class WaterPump(Base):
+    __tablename__ = "water_pumps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    water_pump = Column(Boolean, nullable=False, default=False)  # 1/0 as bit
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class NanoFlicker(Base):
+    __tablename__ = "nano_flickers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    nano_flicker = Column(Boolean, nullable=False, default=False)  # 1/0 as bit
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class LedColor(Base):
+    __tablename__ = "led_colors"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    led_color = Column(String, nullable=False)  # red, green, blue, etc.
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\models\health_monitoring.py
+
+import uuid
+from app.db.base import Base
+from sqlalchemy import Column, DateTime, Float, String, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+
+
+class Biofeedback(Base):
+    __tablename__ = "biofeedbacks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    heart_rate = Column(Float, nullable=True)
+    heart_rate_variability = Column(Float, nullable=True)
+    electromyography = Column(Float, nullable=True)
+    electrodermal_activity = Column(Float, nullable=True)
+    respiration_rate = Column(Float, nullable=True)
+    blood_pressure = Column(Float, nullable=True)
+    temperature = Column(Float, nullable=True)
+    brainwave_activity = Column(Float, nullable=True)
+    oxygen_saturation = Column(Float, nullable=True)
+    blood_glucose_levels = Column(Float, nullable=True)
+    galvanic_skin_response = Column(Float, nullable=True)
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class BurnProgress(Base):
+    __tablename__ = "burn_progresses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    wound_size_depth = Column(Float, nullable=True)
+    epithelialization = Column(Float, nullable=True)
+    exudate_amount_type = Column(Float, nullable=True)
+    infection_indicators = Column(Float, nullable=True)
+    granulation_tissue = Column(Float, nullable=True)
+    pain_levels = Column(Float, nullable=True)
+    swelling_edema = Column(Float, nullable=True)
+    scarring = Column(Float, nullable=True)
+    functional_recovery = Column(Float, nullable=True)
+    color_changes = Column(Float, nullable=True)
+    temperature_wound_site = Column(Float, nullable=True)
+    blood_flow_perfusion = Column(Float, nullable=True)
+    nutritional_status = Column(Float, nullable=True)
+    systemic_indicators = Column(Float, nullable=True)
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class BrainMonitoring(Base):
+    __tablename__ = "brain_monitorings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    alpha_waves = Column(Float, nullable=True)
+    theta_waves = Column(Float, nullable=True)
+    beta_waves = Column(Float, nullable=True)
+    gamma_waves = Column(Float, nullable=True)
+    heart_rate = Column(Float, nullable=True)
+    heart_rate_variability = Column(Float, nullable=True)
+    electromyography = Column(Float, nullable=True)
+    respiration_rate = Column(Float, nullable=True)
+    electrodermal_activity = Column(Float, nullable=True)
+    peripheral_skin_temperature = Column(Float, nullable=True)
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+
+class HeartBrainSynchronicity(Base):
+    __tablename__ = "heart_brain_synchronicities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    heart_rate_variability = Column(Float, nullable=True)
+    alpha_waves = Column(Float, nullable=True)
+    respiratory_sinus_arrhythmia = Column(Float, nullable=True)
+    coherence_ratio = Column(Float, nullable=True)
+    brainwave_coherence = Column(Float, nullable=True)
+    blood_pressure_variability = Column(Float, nullable=True)
+    electrodermal_activity = Column(Float, nullable=True)
+    breathing_patterns = Column(Float, nullable=True)
+    subjective_measures = Column(Float, nullable=True)
+    user_email = Column(String, ForeignKey("users.email"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\models\user.py
+
+import enum
+import uuid
+from datetime import date
+
+from app.db.base import Base
+from sqlalchemy import Boolean, Column, DateTime, Date, Enum, ForeignKey, String, Float, Integer
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+
+
+class UserRole(str, enum.Enum):
+    admin = "Admin"
+    user = "User"  # Added standard user role
+
+
+class UserStatus(str, enum.Enum):
+    active = "Active"
+    inactive = "Inactive"
+    pending = "Pending"
+
+
+class Gender(str, enum.Enum):
+    male = "Male"
+    female = "Female"
+    other = "Other"
+    prefer_not_to_say = "Prefer not to say"
+
+
+class ExerciseFrequency(str, enum.Enum):
+    never = "Never"
+    rarely = "Rarely"
+    sometimes = "Sometimes"
+    regularly = "Regularly"
+    daily = "Daily"
+
+
+class SmokingStatus(str, enum.Enum):
+    non_smoker = "Non-smoker"
+    former_smoker = "Former smoker"
+    occasional_smoker = "Occasional smoker"
+    regular_smoker = "Regular smoker"
+
+
+class AlcoholConsumption(str, enum.Enum):
+    never = "Never"
+    rarely = "Rarely"
+    sometimes = "Sometimes"
+    regularly = "Regularly"
+    frequently = "Frequently"
+
+
+class MaritalStatus(str, enum.Enum):
+    single = "Single"
+    married = "Married"
+    divorced = "Divorced"
+    widowed = "Widowed"
+    separated = "Separated"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.user)
+    
+    # Extended user profile fields
+    full_name = Column(String, nullable=True)
+    gender = Column(Enum(Gender), nullable=True)
+    dob = Column(Date, nullable=True)
+    nationality = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    country = Column(String, nullable=True)
+    occupation = Column(String, nullable=True)
+    marital_status = Column(Enum(MaritalStatus), nullable=True)
+    sleep_hours = Column(Float, nullable=True)
+    exercise_frequency = Column(Enum(ExerciseFrequency), nullable=True)
+    smoking_status = Column(Enum(SmokingStatus), nullable=True)
+    alcohol_consumption = Column(Enum(AlcoholConsumption), nullable=True)
+    user_status = Column(Enum(UserStatus), default=UserStatus.active)
+    
+    refresh_token = Column(String, nullable=True)
+    
+    # Audit fields
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\models\__init__.py
+
+from .user import User, UserRole, UserStatus, Gender, MaritalStatus, ExerciseFrequency, SmokingStatus, AlcoholConsumption
+from .device_controls import Sound, Steam, TempTank, WaterPump, NanoFlicker, LedColor
+from .health_monitoring import Biofeedback, BurnProgress, BrainMonitoring, HeartBrainSynchronicity
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\schemas\device_controls.py
+
+from datetime import datetime
+from uuid import UUID
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
+
+# Base classes with common fields
+class DeviceControlBase(BaseModel):
+    user_email: EmailStr
+
+
+class DeviceControlCreate(DeviceControlBase):
+    created_by: Optional[str] = None
+
+
+class DeviceControlUpdate(BaseModel):
+    updated_by: Optional[str] = None
+
+
+class DeviceControlOut(DeviceControlBase):
+    id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Sound specific schemas
+class SoundBase(DeviceControlBase):
+    sound: bool
+
+
+class SoundCreate(SoundBase, DeviceControlCreate):
+    pass
+
+
+class SoundUpdate(DeviceControlUpdate):
+    sound: Optional[bool] = None
+
+
+class SoundOut(SoundBase, DeviceControlOut):
+    pass
+
+
+# Steam specific schemas
+class SteamBase(DeviceControlBase):
+    steam: bool
+
+
+class SteamCreate(SteamBase, DeviceControlCreate):
+    pass
+
+
+class SteamUpdate(DeviceControlUpdate):
+    steam: Optional[bool] = None
+
+
+class SteamOut(SteamBase, DeviceControlOut):
+    pass
+
+
+# TempTank specific schemas
+class TempTankBase(DeviceControlBase):
+    temp_tank: float
+
+
+class TempTankCreate(TempTankBase, DeviceControlCreate):
+    pass
+
+
+class TempTankUpdate(DeviceControlUpdate):
+    temp_tank: Optional[float] = None
+
+
+class TempTankOut(TempTankBase, DeviceControlOut):
+    pass
+
+
+# WaterPump specific schemas
+class WaterPumpBase(DeviceControlBase):
+    water_pump: bool
+
+
+class WaterPumpCreate(WaterPumpBase, DeviceControlCreate):
+    pass
+
+
+class WaterPumpUpdate(DeviceControlUpdate):
+    water_pump: Optional[bool] = None
+
+
+class WaterPumpOut(WaterPumpBase, DeviceControlOut):
+    pass
+
+
+# NanoFlicker specific schemas
+class NanoFlickerBase(DeviceControlBase):
+    nano_flicker: bool
+
+
+class NanoFlickerCreate(NanoFlickerBase, DeviceControlCreate):
+    pass
+
+
+class NanoFlickerUpdate(DeviceControlUpdate):
+    nano_flicker: Optional[bool] = None
+
+
+class NanoFlickerOut(NanoFlickerBase, DeviceControlOut):
+    pass
+
+
+# LedColor specific schemas
+class LedColorBase(DeviceControlBase):
+    led_color: str
+
+
+class LedColorCreate(LedColorBase, DeviceControlCreate):
+    pass
+
+
+class LedColorUpdate(DeviceControlUpdate):
+    led_color: Optional[str] = None
+
+
+class LedColorOut(LedColorBase, DeviceControlOut):
+    pass
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\schemas\health_monitoring.py
+
+from datetime import datetime
+from uuid import UUID
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
+
+# Base class for all health monitoring schemas
+class HealthMonitoringBase(BaseModel):
+    user_email: EmailStr
+
+
+class HealthMonitoringCreate(HealthMonitoringBase):
+    created_by: Optional[str] = None
+
+
+class HealthMonitoringUpdate(BaseModel):
+    updated_by: Optional[str] = None
+
+
+class HealthMonitoringOut(HealthMonitoringBase):
+    id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+# Biofeedback schemas
+class BiofeedbackBase(HealthMonitoringBase):
+    heart_rate: Optional[float] = None
+    heart_rate_variability: Optional[float] = None
+    electromyography: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    respiration_rate: Optional[float] = None
+    blood_pressure: Optional[float] = None
+    temperature: Optional[float] = None
+    brainwave_activity: Optional[float] = None
+    oxygen_saturation: Optional[float] = None
+    blood_glucose_levels: Optional[float] = None
+    galvanic_skin_response: Optional[float] = None
+
+
+class BiofeedbackCreate(BiofeedbackBase, HealthMonitoringCreate):
+    pass
+
+
+class BiofeedbackUpdate(HealthMonitoringUpdate):
+    heart_rate: Optional[float] = None
+    heart_rate_variability: Optional[float] = None
+    electromyography: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    respiration_rate: Optional[float] = None
+    blood_pressure: Optional[float] = None
+    temperature: Optional[float] = None
+    brainwave_activity: Optional[float] = None
+    oxygen_saturation: Optional[float] = None
+    blood_glucose_levels: Optional[float] = None
+    galvanic_skin_response: Optional[float] = None
+
+
+class BiofeedbackOut(BiofeedbackBase, HealthMonitoringOut):
+    pass
+
+
+# BurnProgress schemas
+class BurnProgressBase(HealthMonitoringBase):
+    wound_size_depth: Optional[float] = None
+    epithelialization: Optional[float] = None
+    exudate_amount_type: Optional[float] = None
+    infection_indicators: Optional[float] = None
+    granulation_tissue: Optional[float] = None
+    pain_levels: Optional[float] = None
+    swelling_edema: Optional[float] = None
+    scarring: Optional[float] = None
+    functional_recovery: Optional[float] = None
+    color_changes: Optional[float] = None
+    temperature_wound_site: Optional[float] = None
+    blood_flow_perfusion: Optional[float] = None
+    nutritional_status: Optional[float] = None
+    systemic_indicators: Optional[float] = None
+
+
+class BurnProgressCreate(BurnProgressBase, HealthMonitoringCreate):
+    pass
+
+
+class BurnProgressUpdate(HealthMonitoringUpdate):
+    wound_size_depth: Optional[float] = None
+    epithelialization: Optional[float] = None
+    exudate_amount_type: Optional[float] = None
+    infection_indicators: Optional[float] = None
+    granulation_tissue: Optional[float] = None
+    pain_levels: Optional[float] = None
+    swelling_edema: Optional[float] = None
+    scarring: Optional[float] = None
+    functional_recovery: Optional[float] = None
+    color_changes: Optional[float] = None
+    temperature_wound_site: Optional[float] = None
+    blood_flow_perfusion: Optional[float] = None
+    nutritional_status: Optional[float] = None
+    systemic_indicators: Optional[float] = None
+
+
+class BurnProgressOut(BurnProgressBase, HealthMonitoringOut):
+    pass
+
+
+# BrainMonitoring schemas
+class BrainMonitoringBase(HealthMonitoringBase):
+    alpha_waves: Optional[float] = None
+    theta_waves: Optional[float] = None
+    beta_waves: Optional[float] = None
+    gamma_waves: Optional[float] = None
+    heart_rate: Optional[float] = None
+    heart_rate_variability: Optional[float] = None
+    electromyography: Optional[float] = None
+    respiration_rate: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    peripheral_skin_temperature: Optional[float] = None
+
+
+class BrainMonitoringCreate(BrainMonitoringBase, HealthMonitoringCreate):
+    pass
+
+
+class BrainMonitoringUpdate(HealthMonitoringUpdate):
+    alpha_waves: Optional[float] = None
+    theta_waves: Optional[float] = None
+    beta_waves: Optional[float] = None
+    gamma_waves: Optional[float] = None
+    heart_rate: Optional[float] = None
+    heart_rate_variability: Optional[float] = None
+    electromyography: Optional[float] = None
+    respiration_rate: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    peripheral_skin_temperature: Optional[float] = None
+
+
+class BrainMonitoringOut(BrainMonitoringBase, HealthMonitoringOut):
+    pass
+
+
+# HeartBrainSynchronicity schemas
+class HeartBrainSynchronicityBase(HealthMonitoringBase):
+    heart_rate_variability: Optional[float] = None
+    alpha_waves: Optional[float] = None
+    respiratory_sinus_arrhythmia: Optional[float] = None
+    coherence_ratio: Optional[float] = None
+    brainwave_coherence: Optional[float] = None
+    blood_pressure_variability: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    breathing_patterns: Optional[float] = None
+    subjective_measures: Optional[float] = None
+
+
+class HeartBrainSynchronicityCreate(HeartBrainSynchronicityBase, HealthMonitoringCreate):
+    pass
+
+
+class HeartBrainSynchronicityUpdate(HealthMonitoringUpdate):
+    heart_rate_variability: Optional[float] = None
+    alpha_waves: Optional[float] = None
+    respiratory_sinus_arrhythmia: Optional[float] = None
+    coherence_ratio: Optional[float] = None
+    brainwave_coherence: Optional[float] = None
+    blood_pressure_variability: Optional[float] = None
+    electrodermal_activity: Optional[float] = None
+    breathing_patterns: Optional[float] = None
+    subjective_measures: Optional[float] = None
+
+
+class HeartBrainSynchronicityOut(HeartBrainSynchronicityBase, HealthMonitoringOut):
+    pass
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\schemas\token.py
+
+from pydantic import BaseModel
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    email: str | None = None
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\schemas\user.py
+
+from datetime import date
+from enum import Enum
+from uuid import UUID
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
+
+class UserRole(str, Enum):
+    admin = "Admin"
+    user = "User"
+
+
+class UserStatus(str, Enum):
+    active = "Active"
+    inactive = "Inactive"
+    pending = "Pending"
+
+
+class Gender(str, Enum):
+    male = "Male"
+    female = "Female"
+    other = "Other"
+    prefer_not_to_say = "Prefer not to say"
+
+
+class ExerciseFrequency(str, Enum):
+    never = "Never"
+    rarely = "Rarely"
+    sometimes = "Sometimes"
+    regularly = "Regularly"
+    daily = "Daily"
+
+
+class SmokingStatus(str, Enum):
+    non_smoker = "Non-smoker"
+    former_smoker = "Former smoker"
+    occasional_smoker = "Occasional smoker"
+    regular_smoker = "Regular smoker"
+
+
+class AlcoholConsumption(str, Enum):
+    never = "Never"
+    rarely = "Rarely"
+    sometimes = "Sometimes"
+    regularly = "Regularly"
+    frequently = "Frequently"
+
+
+class MaritalStatus(str, Enum):
+    single = "Single"
+    married = "Married"
+    divorced = "Divorced"
+    widowed = "Widowed"
+    separated = "Separated"
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+
+
+class UserCreate(UserBase):
+    password: str
+    role: UserRole = UserRole.user
+    full_name: Optional[str] = None
+    gender: Optional[Gender] = None
+    dob: Optional[date] = None
+    nationality: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    occupation: Optional[str] = None
+    marital_status: Optional[MaritalStatus] = None
+    sleep_hours: Optional[float] = None
+    exercise_frequency: Optional[ExerciseFrequency] = None
+    smoking_status: Optional[SmokingStatus] = None
+    alcohol_consumption: Optional[AlcoholConsumption] = None
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    gender: Optional[Gender] = None
+    dob: Optional[date] = None
+    nationality: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    occupation: Optional[str] = None
+    marital_status: Optional[MaritalStatus] = None
+    sleep_hours: Optional[float] = None
+    exercise_frequency: Optional[ExerciseFrequency] = None
+    smoking_status: Optional[SmokingStatus] = None
+    alcohol_consumption: Optional[AlcoholConsumption] = None
+    role: Optional[UserRole] = None
+    user_status: Optional[UserStatus] = None
+
+
+class UserOut(BaseModel):
+    id: UUID
+    email: EmailStr
+    role: UserRole
+    full_name: Optional[str] = None
+    gender: Optional[Gender] = None
+    dob: Optional[date] = None
+    nationality: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    occupation: Optional[str] = None
+    marital_status: Optional[MaritalStatus] = None
+    sleep_hours: Optional[float] = None
+    exercise_frequency: Optional[ExerciseFrequency] = None
+    smoking_status: Optional[SmokingStatus] = None
+    alcohol_consumption: Optional[AlcoholConsumption] = None
+    user_status: Optional[UserStatus] = None
+
+    model_config = {"from_attributes": True}
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\schemas\__init__.py
+
+from .token import Token, TokenData
+from .user import (UserCreate, UserOut, UserRole, UserUpdate, UserStatus, Gender, 
+                  MaritalStatus, ExerciseFrequency, SmokingStatus, AlcoholConsumption)
+
+# Device Controls
+from .device_controls import (
+    SoundCreate, SoundUpdate, SoundOut,
+    SteamCreate, SteamUpdate, SteamOut,
+    TempTankCreate, TempTankUpdate, TempTankOut,
+    WaterPumpCreate, WaterPumpUpdate, WaterPumpOut,
+    NanoFlickerCreate, NanoFlickerUpdate, NanoFlickerOut,
+    LedColorCreate, LedColorUpdate, LedColorOut
+)
+
+# Health Monitoring
+from .health_monitoring import (
+    BiofeedbackCreate, BiofeedbackUpdate, BiofeedbackOut,
+    BurnProgressCreate, BurnProgressUpdate, BurnProgressOut,
+    BrainMonitoringCreate, BrainMonitoringUpdate, BrainMonitoringOut,
+    HeartBrainSynchronicityCreate, HeartBrainSynchronicityUpdate, HeartBrainSynchronicityOut
+)
+
+# File: C:\Users\DELL\Desktop\vinceDev\backend\app\services\user_service.py
+
+from app.core.security import (authenticate_user, create_access_token,
+                               create_refresh_token, extract_email_from_token)
+from app.crud import user as user_crud
+from app.models import User
+from app.schemas import UserCreate
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+
+def handle_signup(user_data: UserCreate, db: Session) -> User:
+   
+
+    existing_user = user_crud.get_user_by_email(db, user_data.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    new_user = user_crud.create_user(db, user_data)
+   
+    return new_user
+
+
+def handle_login(email: str, password: str, db: Session) -> dict:
+    user = authenticate_user(db, email, password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    user_crud.set_refresh_token(db, user, refresh_token)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+def handle_token_refresh(refresh_token: str, db: Session) -> dict:
+    email = extract_email_from_token(refresh_token)
+    user = user_crud.get_user_by_email(db, email)
+
+    if not user or user.refresh_token != refresh_token:
+        raise HTTPException(
+            status_code=401, detail="Refresh token does not match or user not found"
+        )
+
+    new_access_token = create_access_token(data={"sub": user.email})
+    new_refresh_token = create_refresh_token(data={"sub": user.email})
+    user_crud.set_refresh_token(db, user, new_refresh_token)
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+    }
+
+
+def handle_logout(user: User, db: Session):
+    user_crud.set_refresh_token(user, db, None)
+    return {"message": "Successfully logged out"}
