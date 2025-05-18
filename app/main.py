@@ -1,4 +1,4 @@
-from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes
+from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls
 from app.db.base import Base, engine
 
 from fastapi import FastAPI
@@ -28,7 +28,11 @@ app.add_middleware(
 )
 
 # mount your routers
-app.include_router(auth_routes.router, prefix="/auth", tags=["auth"])
-app.include_router(user_routes.router, prefix="/users", tags=["users"])
-app.include_router(device_controls_routes.router, tags=["device-controls"])
-app.include_router(health_monitoring_routes.router, tags=["health-monitoring"])
+app.include_router(auth_routes.router, prefix="/auth", )
+app.include_router(user_routes.router, prefix="/users", )
+app.include_router(device_controls_routes.router, )
+app.include_router(health_monitoring_routes.router, )
+
+
+app.include_router(admin_device_controls.router)
+app.include_router(admin_health_monitoring.router)

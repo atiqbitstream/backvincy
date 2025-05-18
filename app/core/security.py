@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
+from app.models.user import UserRole
 from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -86,7 +87,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_
     return user
 
 
-def require_role(required_roles: list[str]):
+def require_role(required_roles: list[UserRole]):
     def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role not in required_roles:
             raise HTTPException(

@@ -91,8 +91,11 @@ class UserUpdate(BaseModel):
     smoking_status: Optional[SmokingStatus] = None
     alcohol_consumption: Optional[AlcoholConsumption] = None
     role: Optional[UserRole] = None
-    user_status: Optional[UserStatus] = None
+    user_status: Optional[UserStatus] 
+    updated_by: Optional[EmailStr]  
 
+    class Config:
+        orm_mode = True
 
 class UserOut(BaseModel):
     id: UUID
