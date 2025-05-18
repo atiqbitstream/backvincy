@@ -1,4 +1,6 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from .. import models, schemas
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -33,6 +35,23 @@ def get_sound(sound_id: UUID, db: Session = Depends(get_db), user: User = Depend
         raise HTTPException(status_code=404, detail="Sound not found")
     return sound
 
+@router.get(
+    "/sound",
+    response_model=List[schemas.SoundOut],
+    summary="List sound entries for this user",
+)
+def list_led_color(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.Sound)
+        .filter(models.Sound.user_email == current_user.email)
+        .order_by(models.Sound.created_at.desc())
+        .all()
+    )
+
+
 @router.put("/sound/{sound_id}", response_model=SoundOut)
 def update_sound(sound_id: UUID, sound: SoundUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return crud.update_sound(db, sound_id, sound)
@@ -56,6 +75,22 @@ def get_steam(steam_id: UUID, db: Session = Depends(get_db), user: User = Depend
     if not steam:
         raise HTTPException(status_code=404, detail="Steam not found")
     return steam
+
+@router.get(
+    "/steam",
+    response_model=List[schemas.SteamOut],
+    summary="List steam entries for this user",
+)
+def list_led_color(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.Steam)
+        .filter(models.Steam.user_email == current_user.email)
+        .order_by(models.Steam.created_at.desc())
+        .all()
+    )
 
 @router.put("/steam/{steam_id}", response_model=SteamOut)
 def update_steam(steam_id: UUID, steam: SteamUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -81,6 +116,22 @@ def get_temp_tank(id: UUID, db: Session = Depends(get_db), user: User = Depends(
         raise HTTPException(status_code=404, detail="TempTank not found")
     return obj
 
+@router.get(
+    "/temp-tank",
+    response_model=List[schemas.TempTankOut],
+    summary="List temperature tank entries for this user",
+)
+def list_led_color(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.TempTank)
+        .filter(models.TempTank.user_email == current_user.email)
+        .order_by(models.TempTank.created_at.desc())
+        .all()
+    )
+
 @router.put("/temp-tank/{id}", response_model=TempTankOut)
 def update_temp_tank(id: UUID, update: TempTankUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return crud.update_temp_tank(db, id, update)
@@ -104,6 +155,22 @@ def get_water_pump(id: UUID, db: Session = Depends(get_db), user: User = Depends
     if not obj:
         raise HTTPException(status_code=404, detail="WaterPump not found")
     return obj
+
+@router.get(
+    "/water-pump",
+    response_model=List[schemas.WaterPumpOut],
+    summary="List water pump entries for this user",
+)
+def list_led_color(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.WaterPump)
+        .filter(models.WaterPump.user_email == current_user.email)
+        .order_by(models.WaterPump.created_at.desc())
+        .all()
+    )
 
 @router.put("/water-pump/{id}", response_model=WaterPumpOut)
 def update_water_pump(id: UUID, update: WaterPumpUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -129,6 +196,22 @@ def get_nano_flicker(id: UUID, db: Session = Depends(get_db), user: User = Depen
         raise HTTPException(status_code=404, detail="NanoFlicker not found")
     return obj
 
+@router.get(
+    "/nano-flicker",
+    response_model=List[schemas.NanoFlickerOut],
+    summary="List Nano Flicker entries for this user",
+)
+def list_nano_flicker(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.NanoFlicker)
+        .filter(models.NanoFlicker.user_email == current_user.email)
+        .order_by(models.NanoFlicker.created_at.desc())
+        .all()
+    )
+
 @router.put("/nano-flicker/{id}", response_model=NanoFlickerOut)
 def update_nano_flicker(id: UUID, update: NanoFlickerUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return crud.update_nano_flicker(db, id, update)
@@ -152,6 +235,22 @@ def get_led_color(id: UUID, db: Session = Depends(get_db), user: User = Depends(
     if not obj:
         raise HTTPException(status_code=404, detail="LedColor not found")
     return obj
+
+@router.get(
+    "/led-color",
+    response_model=List[schemas.LedColorOut],
+    summary="List LED Color entries for this user",
+)
+def list_led_color(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.LedColor)
+        .filter(models.LedColor.user_email == current_user.email)
+        .order_by(models.LedColor.created_at.desc())
+        .all()
+    )
 
 @router.put("/led-color/{id}", response_model=LedColorOut)
 def update_led_color(id: UUID, update: LedColorUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

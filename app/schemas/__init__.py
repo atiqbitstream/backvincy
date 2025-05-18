@@ -1,4 +1,4 @@
-from .token import Token, TokenData
+from .token import Token, TokenData,TokenAdmin
 from .user import (UserCreate, UserOut, UserRole, UserUpdate, UserStatus, Gender, 
                   MaritalStatus, ExerciseFrequency, SmokingStatus, AlcoholConsumption)
 

@@ -1,6 +1,8 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
+from .. import models, schemas
 
 from app.db.base import get_db
 from app.core.security import get_current_user
@@ -27,6 +29,22 @@ def get_biofeedback(id: UUID, db: Session = Depends(get_db), user: User = Depend
         raise HTTPException(status_code=404, detail="Biofeedback not found")
     return obj
 
+@router.get(
+    "/biofeedback",
+    response_model=List[schemas.BiofeedbackOut],
+    summary="List Biofeedback entries for this user",
+)
+def list_biofeedback(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.Biofeedback)
+        .filter(models.Biofeedback.user_email == current_user.email)
+        .order_by(models.Biofeedback.created_at.desc())
+        .all()
+    )
+
 @router.put("/biofeedback/{id}", response_model=BiofeedbackOut)
 def update_biofeedback(id: UUID, update: BiofeedbackUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return crud.update_biofeedback(db, id, update)
@@ -50,6 +68,22 @@ def get_burn_progress(id: UUID, db: Session = Depends(get_db), user: User = Depe
     if not obj:
         raise HTTPException(status_code=404, detail="BurnProgress not found")
     return obj
+
+@router.get(
+    "/burn-progress",
+    response_model=List[schemas.BurnProgressOut],
+    summary="List Burn Progress entries for this user",
+)
+def list_burn_progress(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.BurnProgress)
+        .filter(models.BurnProgress.user_email == current_user.email)
+        .order_by(models.BurnProgress.created_at.desc())
+        .all()
+    )
 
 @router.put("/burn-progress/{id}", response_model=BurnProgressOut)
 def update_burn_progress(id: UUID, update: BurnProgressUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -75,6 +109,22 @@ def get_brain_monitoring(id: UUID, db: Session = Depends(get_db), user: User = D
         raise HTTPException(status_code=404, detail="BrainMonitoring not found")
     return obj
 
+@router.get(
+    "/brain-monitoring",
+    response_model=List[schemas.BrainMonitoringOut],
+    summary="List Brain monitoring entries for this user",
+)
+def list_burn_progress(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.BrainMonitoring)
+        .filter(models.BrainMonitoring.user_email == current_user.email)
+        .order_by(models.BrainMonitoring.created_at.desc())
+        .all()
+    )
+
 @router.put("/brain-monitoring/{id}", response_model=BrainMonitoringOut)
 def update_brain_monitoring(id: UUID, update: BrainMonitoringUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return crud.update_brain_monitoring(db, id, update)
@@ -98,6 +148,22 @@ def get_heart_brain(id: UUID, db: Session = Depends(get_db), user: User = Depend
     if not obj:
         raise HTTPException(status_code=404, detail="HeartBrainSynchronicity not found")
     return obj
+
+@router.get(
+    "/heart-brain-synchronicity",
+    response_model=List[schemas.HeartBrainSynchronicityOut],
+    summary="List Heart Brain synchronicities entries for this user",
+)
+def list_burn_progress(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return (
+        db.query(models.HeartBrainSynchronicity)
+        .filter(models.HeartBrainSynchronicity.user_email == current_user.email)
+        .order_by(models.HeartBrainSynchronicity.created_at.desc())
+        .all()
+    )
 
 @router.put("/heart-brain-synchronicity/{id}", response_model=HeartBrainSynchronicityOut)
 def update_heart_brain(id: UUID, update: HeartBrainSynchronicityUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

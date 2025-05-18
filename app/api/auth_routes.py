@@ -1,11 +1,12 @@
-from app.core.security import get_current_user
+from app.core.security import authenticate_user, create_access_token, create_refresh_token, get_current_user
 from app.db.base import get_db
-from app.models import User
-from app.schemas import Token, UserCreate, UserOut
+from app.models import User,UserRole
+from app.schemas import Token, UserCreate, UserOut,TokenAdmin
 from app.services.user_service import (handle_login, handle_logout,
                                        handle_signup, handle_token_refresh)
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 
@@ -27,6 +28,40 @@ def signup(user: UserCreate, db: Session = get_db_dep):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = get_db_dep):
     return JSONResponse(content=handle_login(form_data.username, form_data.password, db))
 
+@router.post(
+    "/admin-login",
+    response_model=TokenAdmin,
+    summary="Login as admin and get tokens + is_admin flag",
+)
+def admin_login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    # 1) Verify credentials
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+
+    # 2) Check that their role is Admin
+    if user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized as admin",
+        )
+
+    # 3) Create tokens
+    access_token  = create_access_token({"sub": user.email})
+    refresh_token = create_refresh_token({"sub": user.email})
+
+    return {
+        "access_token":  access_token,
+        "refresh_token": refresh_token,
+        "token_type":    "bearer",
+        "is_admin":      True,
+    }
 
 @router.post("/refresh", response_model=Token)
 def refresh_token(refresh_token: str, db: Session = get_db_dep):
