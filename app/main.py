@@ -1,3 +1,4 @@
+from app.api import admin_live_session, admin_news
 from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls
 from app.db.base import Base, engine
 
@@ -36,3 +37,6 @@ app.include_router(health_monitoring_routes.router, )
 
 app.include_router(admin_device_controls.router)
 app.include_router(admin_health_monitoring.router)
+
+app.include_router(admin_live_session.router)
+app.include_router(admin_news.router)
