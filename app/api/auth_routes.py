@@ -32,7 +32,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = get_db
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     # Check user status here
-    if user.user_status in [UserStatus.Inactive.value, UserStatus.Pending.value]:
+    if user.user_status in [UserStatus.inactive.value, UserStatus.pending.value]:
         raise HTTPException(status_code=403, detail="Your account is not active. Please contact support.")
 
     # Proceed to generate token etc.
