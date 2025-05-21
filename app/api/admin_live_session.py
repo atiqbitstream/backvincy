@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi import Body
 from uuid import UUID
 from typing import List
 
@@ -56,3 +57,18 @@ def admin_update_live_session(
 def admin_delete_live_session(live_session_id: UUID, db: Session = Depends(get_db)):
     if not delete_live_session(db, live_session_id):
         raise HTTPException(status_code=404, detail="LiveSession not found")
+
+
+@router.patch("/{live_session_id}/livestatus", response_model=LiveSessionOut)
+def toggle_live_status(
+    live_session_id: UUID,
+    livestatus: bool = Body(..., embed=True),
+    db: Session = Depends(get_db)
+):
+    session = get_live_session(db, live_session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="LiveSession not found")
+    session.livestatus = livestatus
+    db.commit()
+    db.refresh(session)
+    return session

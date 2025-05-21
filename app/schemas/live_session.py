@@ -11,6 +11,7 @@ class LiveSessionBase(BaseModel):
     date_time: datetime
     duration_minutes: int
     youtube_link: Optional[str]
+    livestatus: Optional[bool] = False 
 
 class LiveSessionCreate(LiveSessionBase):
     pass

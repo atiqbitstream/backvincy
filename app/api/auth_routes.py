@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
+from app.models.user import UserStatus 
 
 router = APIRouter(tags=["auth"])
 
@@ -26,6 +27,15 @@ def signup(user: UserCreate, db: Session = get_db_dep):
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = get_db_dep):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    # Check user status here
+    if user.user_status in [UserStatus.Inactive.value, UserStatus.Pending.value]:
+        raise HTTPException(status_code=403, detail="Your account is not active. Please contact support.")
+
+    # Proceed to generate token etc.
     return JSONResponse(content=handle_login(form_data.username, form_data.password, db))
 
 @router.post(
@@ -37,7 +47,6 @@ def admin_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    # 1) Verify credentials
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -45,14 +54,19 @@ def admin_login(
             detail="Incorrect username or password",
         )
 
-    # 2) Check that their role is Admin
     if user.role != UserRole.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized as admin",
         )
 
-    # 3) Create tokens
+    # Check user status for admin too
+    if user.user_status in [UserStatus.Inactive.value, UserStatus.Pending.value]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your admin account is not active. Please contact support.",
+        )
+
     access_token  = create_access_token({"sub": user.email})
     refresh_token = create_refresh_token({"sub": user.email})
 

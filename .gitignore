@@ -80,3 +80,4 @@ docker-compose.override.yml
 # MacOS and Linux specific
 .DS_Store
 Thumbs.db
+changes-teller.py

@@ -10,6 +10,9 @@ from uuid import UUID
 from app.crud.user import (
     get_user_by_id, list_users, update_user, delete_user_and_related
 )
+from app.schemas.live_session import LiveSessionOut
+from app.crud.live_session import get_all_live_sessions, get_live_session
+from fastapi import Query
 
 router = APIRouter(tags=["users"])
 
@@ -58,3 +61,33 @@ def admin_delete_user(user_id: UUID, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return
+
+
+
+
+@router.get("/live-sessions", response_model=list[LiveSessionOut])
+def list_live_sessions(
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    # current_user: User = Depends(get_current_user)  # Optional if you want auth
+):
+    """
+    List live sessions for general users.
+    """
+    return get_all_live_sessions(db, skip=skip, limit=limit)
+
+
+@router.get("/live-sessions/{live_session_id}", response_model=LiveSessionOut)
+def get_live_session_detail(
+    live_session_id: UUID,
+    db: Session = Depends(get_db),
+    # current_user: User = Depends(get_current_user)  # Optional if you want auth
+):
+    """
+    Get live session detail by ID for general users.
+    """
+    session = get_live_session(db, live_session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="LiveSession not found")
+    return session
