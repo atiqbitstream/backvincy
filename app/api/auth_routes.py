@@ -61,7 +61,7 @@ def admin_login(
         )
 
     # Check user status for admin too
-    if user.user_status in [UserStatus.Inactive.value, UserStatus.Pending.value]:
+    if user.user_status in [UserStatus.inactive.value, UserStatus.pending.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your admin account is not active. Please contact support.",

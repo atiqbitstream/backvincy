@@ -2,7 +2,7 @@ from app.core.security import get_current_user
 from app.db.base import get_db
 from app.models import User
 from app.schemas.user import UserOut, UserUpdate
-from fastapi import  APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.security import require_role, get_current_user
 from app.models.user import UserRole
 from sqlalchemy.orm import Session
@@ -14,12 +14,42 @@ from app.schemas.live_session import LiveSessionOut
 from app.crud.live_session import get_all_live_sessions, get_live_session
 from fastapi import Query
 
+# IMPORTANT: Make sure there's no default dependencies here that would restrict access
 router = APIRouter(tags=["users"])
 
 
 @router.get("/me", response_model=UserOut)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+# Place these BEFORE any "/{user_id}" or similar catch-all routes
+
+@router.get("/live-sessions", response_model=list[LiveSessionOut])
+async def list_live_sessions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """
+    List live sessions for general users.
+    """
+    return get_all_live_sessions(db, skip=skip, limit=limit)
+
+@router.get("/live-sessions/{live_session_id}", response_model=LiveSessionOut)
+async def get_live_session_detail(
+    live_session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get live session detail by ID for general users.
+    """
+    session = get_live_session(db, live_session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="LiveSession not found")
+    return session
 
 
 # --- Admin-only endpoints ---
@@ -61,33 +91,3 @@ def admin_delete_user(user_id: UUID, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return
-
-
-
-
-@router.get("/live-sessions", response_model=list[LiveSessionOut])
-def list_live_sessions(
-    db: Session = Depends(get_db),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    # current_user: User = Depends(get_current_user)  # Optional if you want auth
-):
-    """
-    List live sessions for general users.
-    """
-    return get_all_live_sessions(db, skip=skip, limit=limit)
-
-
-@router.get("/live-sessions/{live_session_id}", response_model=LiveSessionOut)
-def get_live_session_detail(
-    live_session_id: UUID,
-    db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user)  # Optional if you want auth
-):
-    """
-    Get live session detail by ID for general users.
-    """
-    session = get_live_session(db, live_session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="LiveSession not found")
-    return session

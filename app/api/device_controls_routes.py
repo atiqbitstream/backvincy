@@ -1,4 +1,4 @@
-from typing import List
+from typing import List,Optional
 from fastapi import APIRouter, Depends, HTTPException
 from .. import models, schemas
 from sqlalchemy.orm import Session
@@ -16,6 +16,8 @@ from app.schemas import (
     NanoFlickerCreate, NanoFlickerUpdate, NanoFlickerOut,
     LedColorCreate, LedColorUpdate, LedColorOut,
 )
+from pydantic import BaseModel
+
 
 router = APIRouter(prefix="/device-controls", tags=["Device Controls"])
 
@@ -262,3 +264,155 @@ def delete_led_color(id: UUID, db: Session = Depends(get_db), user: User = Depen
     if not success:
         raise HTTPException(status_code=404, detail="LedColor not found")
     return {"detail": "LedColor deleted successfully"}
+
+
+
+
+
+
+# Define a response model for the consolidated endpoint
+class DeviceControlsLatest(BaseModel):
+    sound: Optional[SoundOut] = None
+    steam: Optional[SteamOut] = None
+    temp_tank: Optional[TempTankOut] = None
+    water_pump: Optional[WaterPumpOut] = None
+    nano_flicker: Optional[NanoFlickerOut] = None
+    led_color: Optional[LedColorOut] = None
+
+    model_config = {"from_attributes": True}
+
+# Add this to your existing router
+@router.get(
+    "/latest",
+    response_model=DeviceControlsLatest,
+    summary="Get latest values for all device controls",
+)
+def get_latest_device_controls(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest value for each device control for the current user.
+    """
+    user_email = current_user.email
+    
+    # Get the latest entry for each device control
+    latest_sound = crud.get_sound_by_user_email(db, user_email)
+    latest_steam = crud.get_steam_by_user_email(db, user_email)
+    latest_temp_tank = crud.get_temp_tank_by_user_email(db, user_email)
+    latest_water_pump = crud.get_water_pump_by_user_email(db, user_email)
+    latest_nano_flicker = crud.get_nano_flicker_by_user_email(db, user_email)
+    latest_led_color = crud.get_led_color_by_user_email(db, user_email)
+    
+    # Construct the response
+    return DeviceControlsLatest(
+        sound=latest_sound,
+        steam=latest_steam,
+        temp_tank=latest_temp_tank,
+        water_pump=latest_water_pump,
+        nano_flicker=latest_nano_flicker,
+        led_color=latest_led_color,
+    )
+
+# Individual latest endpoints for each device control
+@router.get(
+    "/sound/latest",
+    response_model=SoundOut,
+    summary="Get the latest sound setting",
+)
+def get_latest_sound(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest sound setting for the current user.
+    """
+    latest_sound = crud.get_sound_by_user_email(db, current_user.email)
+    if not latest_sound:
+        raise HTTPException(status_code=404, detail="No sound settings found")
+    return latest_sound
+
+@router.get(
+    "/steam/latest",
+    response_model=SteamOut,
+    summary="Get the latest steam setting",
+)
+def get_latest_steam(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest steam setting for the current user.
+    """
+    latest_steam = crud.get_steam_by_user_email(db, current_user.email)
+    if not latest_steam:
+        raise HTTPException(status_code=404, detail="No steam settings found")
+    return latest_steam
+
+@router.get(
+    "/temp-tank/latest",
+    response_model=TempTankOut,
+    summary="Get the latest temperature tank setting",
+)
+def get_latest_temp_tank(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest temperature tank setting for the current user.
+    """
+    latest_temp_tank = crud.get_temp_tank_by_user_email(db, current_user.email)
+    if not latest_temp_tank:
+        raise HTTPException(status_code=404, detail="No temperature tank settings found")
+    return latest_temp_tank
+
+@router.get(
+    "/water-pump/latest",
+    response_model=WaterPumpOut,
+    summary="Get the latest water pump setting",
+)
+def get_latest_water_pump(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest water pump setting for the current user.
+    """
+    latest_water_pump = crud.get_water_pump_by_user_email(db, current_user.email)
+    if not latest_water_pump:
+        raise HTTPException(status_code=404, detail="No water pump settings found")
+    return latest_water_pump
+
+@router.get(
+    "/nano-flicker/latest",
+    response_model=NanoFlickerOut,
+    summary="Get the latest nano flicker setting",
+)
+def get_latest_nano_flicker(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest nano flicker setting for the current user.
+    """
+    latest_nano_flicker = crud.get_nano_flicker_by_user_email(db, current_user.email)
+    if not latest_nano_flicker:
+        raise HTTPException(status_code=404, detail="No nano flicker settings found")
+    return latest_nano_flicker
+
+@router.get(
+    "/led-color/latest",
+    response_model=LedColorOut,
+    summary="Get the latest LED color setting",
+)
+def get_latest_led_color(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the latest LED color setting for the current user.
+    """
+    latest_led_color = crud.get_led_color_by_user_email(db, current_user.email)
+    if not latest_led_color:
+        raise HTTPException(status_code=404, detail="No LED color settings found")
+    return latest_led_color

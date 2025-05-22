@@ -283,3 +283,5 @@ def delete_led_color(db: Session, led_color_id: UUID) -> bool:
         db.commit()
         return True
     return False
+
+

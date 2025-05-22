@@ -40,3 +40,14 @@ app.include_router(admin_health_monitoring.router)
 
 app.include_router(admin_live_session.router)
 app.include_router(admin_news.router)
+
+@app.get("/debug/routes")
+async def debug_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "name": route.name,
+            "methods": route.methods
+        })
+    return routes
