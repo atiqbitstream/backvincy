@@ -1,4 +1,4 @@
-from app.api import admin_live_session, admin_news
+from app.api import admin_live_session, admin_news,user_news
 from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls
 from app.db.base import Base, engine
 
@@ -31,6 +31,7 @@ app.add_middleware(
 # mount your routers
 app.include_router(auth_routes.router, prefix="/auth", )
 app.include_router(user_routes.router, prefix="/users", )
+app.include_router(user_news.router, prefix="/news")
 app.include_router(device_controls_routes.router, )
 app.include_router(health_monitoring_routes.router, )
 
