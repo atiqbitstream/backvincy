@@ -1,15 +1,15 @@
 from app.core.security import authenticate_user, create_access_token, create_refresh_token, get_current_user
 from app.db.base import get_db
-from app.models import User,UserRole
-from app.schemas import Token, UserCreate, UserOut,TokenAdmin
+from app.models import User, UserRole
+from app.schemas import Token, UserCreate, UserOut, TokenAdmin
 from app.services.user_service import (handle_login, handle_logout,
-                                       handle_signup, handle_token_refresh)
+                                     handle_signup, handle_token_refresh)
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
-from app.models.user import UserStatus 
+from app.models.user import UserStatus
+from app.crud import user as user_crud  # Add this import
 
 router = APIRouter(tags=["auth"])
 
@@ -29,14 +29,33 @@ def signup(user: UserCreate, db: Session = get_db_dep):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = get_db_dep):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password"
+        )
 
-    # Check user status here
-    if user.user_status in [UserStatus.inactive.value, UserStatus.pending.value]:
-        raise HTTPException(status_code=403, detail="Your account is not active. Please contact support.")
+    # Check user status
+    if user.user_status == UserStatus.inactive:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact support."
+        )
+    
+    if user.user_status == UserStatus.pending:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is pending activation. Please wait for admin approval."
+        )
 
-    # Proceed to generate token etc.
-    return JSONResponse(content=handle_login(form_data.username, form_data.password, db))
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    user_crud.set_refresh_token(db, user, refresh_token)  # Now this will work
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
 
 @router.post(
     "/admin-login",
@@ -51,30 +70,36 @@ def admin_login(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username or password"
         )
 
     if user.role != UserRole.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized as admin",
+            detail="Not authorized as admin"
         )
-
+        
     # Check user status for admin too
-    if user.user_status in [UserStatus.inactive.value, UserStatus.pending.value]:
+    if user.user_status == UserStatus.inactive:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your admin account is not active. Please contact support.",
+            detail="Your admin account has been deactivated. Please contact support."
+        )
+    
+    if user.user_status == UserStatus.pending:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your admin account is pending activation."
         )
 
-    access_token  = create_access_token({"sub": user.email})
+    access_token = create_access_token({"sub": user.email})
     refresh_token = create_refresh_token({"sub": user.email})
 
     return {
-        "access_token":  access_token,
+        "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type":    "bearer",
-        "is_admin":      True,
+        "token_type": "bearer",
+        "is_admin": True
     }
 
 @router.post("/refresh", response_model=Token)
