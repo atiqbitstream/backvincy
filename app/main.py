@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="FortiFund Backend",
-    description="Backend API for FortiFund platform",
+    title="WOMB Backend",
+    description="Backend API for WOMB platform",
     version="1.0.0",
 )
 
