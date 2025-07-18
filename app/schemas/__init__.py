@@ -19,3 +19,15 @@ from .health_monitoring import (
     BrainMonitoringCreate, BrainMonitoringUpdate, BrainMonitoringOut,
     HeartBrainSynchronicityCreate, HeartBrainSynchronicityUpdate, HeartBrainSynchronicityOut
 )
+
+# News
+from .news import NewsCreate, NewsUpdate, NewsOut
+
+# Live Session
+from .live_session import LiveSessionCreate, LiveSessionUpdate, LiveSessionOut
+
+# Contact
+from .contact import ContactCreate, ContactUpdate, ContactOut
+
+# About
+from .about import AboutCreate, AboutUpdate, AboutOut

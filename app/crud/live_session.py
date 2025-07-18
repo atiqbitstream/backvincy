@@ -26,6 +26,14 @@ def get_all_live_sessions(db: Session, skip: int = 0, limit: int = 100) -> List[
         .all()
     )
 
+def get_latest_live_session(db: Session) -> Optional[LiveSession]:
+    """Get the latest live session for public display"""
+    return (
+        db.query(LiveSession)
+        .order_by(LiveSession.date_time.desc())
+        .first()
+    )
+
 def update_live_session(db: Session, live_session_id: UUID, data: LiveSessionUpdate) -> Optional[LiveSession]:
     db_live_session = get_live_session(db, live_session_id)
     if db_live_session:

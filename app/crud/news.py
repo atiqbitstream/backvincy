@@ -17,6 +17,10 @@ def get_news(db: Session, news_id: UUID) -> News:
 def get_all_news(db: Session, skip: int = 0, limit: int = 100):
     return db.query(News).order_by(News.publish_date.desc()).offset(skip).limit(limit).all()
 
+def get_latest_news(db: Session, limit: int = 2):
+    """Get the latest news items for public display"""
+    return db.query(News).order_by(News.publish_date.desc()).limit(limit).all()
+
 def update_news(db: Session, news_id: UUID, news_update: NewsUpdate) -> News:
     db_news = get_news(db, news_id)
     if db_news:

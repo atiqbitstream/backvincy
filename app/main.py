@@ -1,5 +1,5 @@
 from app.api import admin_live_session, admin_news,user_news
-from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls
+from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls, public_routes, admin_contact, admin_about
 from app.db.base import Base, engine
 
 from fastapi import FastAPI
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth_routes.router, prefix="/auth", )
 app.include_router(user_routes.router, prefix="/users", )
 app.include_router(user_news.router, prefix="/news")
+app.include_router(public_routes.router)
 app.include_router(device_controls_routes.router, )
 app.include_router(health_monitoring_routes.router, )
 
@@ -41,6 +42,8 @@ app.include_router(admin_health_monitoring.router)
 
 app.include_router(admin_live_session.router)
 app.include_router(admin_news.router)
+app.include_router(admin_contact.router)
+app.include_router(admin_about.router)
 
 @app.get("/debug/routes")
 async def debug_routes():
