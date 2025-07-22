@@ -4,7 +4,7 @@ from app.models import User, UserRole
 from app.schemas import Token, UserCreate, UserOut, TokenAdmin
 from app.services.user_service import (handle_login, handle_logout,
                                      handle_signup, handle_token_refresh)
-from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse

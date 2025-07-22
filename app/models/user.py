@@ -79,7 +79,7 @@ class User(Base):
     exercise_frequency = Column(Enum(ExerciseFrequency), nullable=True)
     smoking_status = Column(Enum(SmokingStatus), nullable=True)
     alcohol_consumption = Column(Enum(AlcoholConsumption), nullable=True)
-    user_status = Column(Enum(UserStatus), default=UserStatus.active)
+    user_status = Column(Enum(UserStatus), default=UserStatus.inactive)
     
     refresh_token = Column(String, nullable=True)
     
