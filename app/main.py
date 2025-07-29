@@ -1,8 +1,9 @@
 from app.api import admin_live_session, admin_news,user_news
-from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls, public_routes, admin_contact, admin_about
+from app.api import  auth_routes, user_routes,device_controls_routes, health_monitoring_routes,admin_health_monitoring,admin_device_controls, public_routes, admin_contact, admin_about, file_upload
 from app.db.base import Base, engine
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.models import * 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -44,6 +45,10 @@ app.include_router(admin_live_session.router)
 app.include_router(admin_news.router)
 app.include_router(admin_contact.router)
 app.include_router(admin_about.router)
+app.include_router(file_upload.router)
+
+# Mount static files for uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/debug/routes")
 async def debug_routes():
