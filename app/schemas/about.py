@@ -7,6 +7,7 @@ from typing import Optional
 class AboutBase(BaseModel):
     title: str
     subtitle: Optional[str] = None
+    hero_description: Optional[str] = None
     image_url: Optional[str] = None
     heading: Optional[str] = None
     content: Optional[str] = None
