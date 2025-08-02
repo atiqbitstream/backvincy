@@ -16,6 +16,7 @@ class LiveSession(Base):
     date_time = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
     youtube_link = Column(String(500))
+    image_url = Column(String(500))
     livestatus = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
