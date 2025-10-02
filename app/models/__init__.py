@@ -5,3 +5,4 @@ from .news import News
 from .live_session import LiveSession
 from .contact import Contact
 from .about import About
+from .admin_hub import AdminHub
