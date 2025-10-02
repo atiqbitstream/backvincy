@@ -6,3 +6,4 @@ from .live_session import LiveSession
 from .contact import Contact
 from .about import About
 from .admin_hub import AdminHub
+from .user_hub import UserHub
