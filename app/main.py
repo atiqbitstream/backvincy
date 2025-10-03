@@ -19,7 +19,13 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8080",
-    "https://frontvincy.onrender.com"
+    "https://frontvincy.onrender.com",
+    "https://www.wellnessoptimalmindbody.com",
+    "https://wellnessoptimalmindbody.com",
+    "https://www.saunaura.net",
+    "https://saunaura.net",
+    "https://www.saunaura.online",
+    "https://saunaura.online"
 ]
 
 app.add_middleware(
