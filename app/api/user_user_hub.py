@@ -26,14 +26,6 @@ def create_user_hub_entry(
     current_user = Depends(get_current_user)
 ):
     """Create a new user hub entry"""
-    # Check if email already exists
-    existing_hub = get_user_hub_by_email(db, payload.email)
-    if existing_hub:
-        raise HTTPException(
-            status_code=400, 
-            detail="User with this email already exists in hub"
-        )
-    
     # Add the logged-in user's name to created_by field
     payload.created_by = current_user.full_name or current_user.email
     
