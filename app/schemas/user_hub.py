@@ -11,6 +11,7 @@ class UserHubBase(BaseModel):
     description: Optional[str] = None
     url: Optional[str] = None
     status: Optional[bool] = False  # Default to inactive
+    created_by: Optional[str] = None
 
 class UserHubCreate(UserHubBase):
     pass

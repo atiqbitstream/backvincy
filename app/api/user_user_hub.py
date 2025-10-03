@@ -34,6 +34,9 @@ def create_user_hub_entry(
             detail="User with this email already exists in hub"
         )
     
+    # Add the logged-in user's name to created_by field
+    payload.created_by = current_user.full_name or current_user.email
+    
     return create_user_hub(db, payload)
 
 @router.get("/", response_model=List[UserHubOut])
