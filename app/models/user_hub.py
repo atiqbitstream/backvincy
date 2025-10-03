@@ -15,6 +15,6 @@ class UserHub(Base):
     category = Column(String(100), nullable=False)  # category title (e.g., Meditation)
     description = Column(Text, nullable=True)
     url = Column(String(255), nullable=True)  # e.g. profile link, social link, etc.
-    status = Column(Boolean, default=True)
+    status = Column(Boolean, default=False)  # Default to inactive, requires admin approval
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

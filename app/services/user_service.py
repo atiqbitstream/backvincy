@@ -3,6 +3,7 @@ from app.core.security import (authenticate_user, create_access_token,
 from app.crud import user as user_crud
 from app.models import User
 from app.schemas import UserCreate
+from app.services.email_service import send_signup_notification
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,13 @@ def handle_signup(user_data: UserCreate, db: Session) -> User:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = user_crud.create_user(db, user_data)
+    
+    # Send email notification to admin
+    try:
+        send_signup_notification(new_user.name, new_user.email)
+    except Exception as e:
+        print(f"Failed to send signup notification email: {e}")
+        # Don't raise exception here to avoid breaking signup process
    
     return new_user
 

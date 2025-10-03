@@ -10,7 +10,7 @@ class UserHubBase(BaseModel):
     category: str
     description: Optional[str] = None
     url: Optional[str] = None
-    status: Optional[bool] = True
+    status: Optional[bool] = False  # Default to inactive
 
 class UserHubCreate(UserHubBase):
     pass
