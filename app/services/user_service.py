@@ -3,13 +3,9 @@ from app.core.security import (authenticate_user, create_access_token,
 from app.crud import user as user_crud
 from app.models import User
 from app.schemas import UserCreate
+from app.services.email_service import send_signup_notification
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.services.email_service import send_new_user_notification
-from app.core.config import settings
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def handle_signup(user_data: UserCreate, db: Session) -> User:
@@ -21,17 +17,12 @@ def handle_signup(user_data: UserCreate, db: Session) -> User:
 
     new_user = user_crud.create_user(db, user_data)
     
-    # Send email notification to admins (non-blocking)
+    # Send email notification to admin
     try:
-        admin_emails = settings.admin_emails_list
-        send_new_user_notification(
-            user_email=new_user.email,
-            user_name=new_user.full_name or new_user.email,
-            admin_emails=admin_emails
-        )
+        send_signup_notification(new_user.name, new_user.email)
     except Exception as e:
-        # Log the error but don't fail the signup
-        logger.error(f"Failed to send admin notification email: {str(e)}")
+        print(f"Failed to send signup notification email: {e}")
+        # Don't raise exception here to avoid breaking signup process
    
     return new_user
 

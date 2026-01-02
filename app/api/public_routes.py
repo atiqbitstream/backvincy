@@ -7,10 +7,14 @@ from app.schemas.news import NewsOut
 from app.schemas.live_session import LiveSessionOut
 from app.schemas.contact import ContactOut
 from app.schemas.about import AboutOut
+from app.schemas.admin_hub import AdminHubOut
 from app.crud.news import get_latest_news
 from app.crud.live_session import get_latest_live_session
 from app.crud.contact import get_latest_contact
 from app.crud.about import get_latest_about
+from app.schemas.user_hub import UserHubOut
+from app.crud.admin_hub import get_all_admin_hubs
+from app.crud.user_hub import get_user_hubs_by_category
 
 router = APIRouter(
     prefix="/public",
@@ -48,3 +52,27 @@ def get_about_info_public(db: Session = Depends(get_db)):
     This endpoint is designed for use on the landing page.
     """
     return get_latest_about(db)
+
+@router.get("/hub-categories", response_model=List[AdminHubOut], summary="Get hub categories for public use")
+def get_hub_categories_public(db: Session = Depends(get_db)):
+    """
+    Get hub categories without authentication.
+    This endpoint is designed for use in the contact form dropdown.
+    """
+    return get_all_admin_hubs(db)
+
+@router.get("/admin-hub/categories", response_model=List[AdminHubOut], summary="Get admin hub categories for public use")
+def get_admin_hub_categories_public(db: Session = Depends(get_db)):
+    """
+    Get admin hub categories without authentication.
+    This endpoint is designed for use in the hub pages.
+    """
+    return get_all_admin_hubs(db)
+
+@router.get("/user-hub/category/{category}", response_model=List[UserHubOut], summary="Get user submissions by category")
+def get_user_hub_by_category_public(category: str, db: Session = Depends(get_db)):
+    """
+    Get user hub submissions by category without authentication.
+    Only returns active submissions for public viewing.
+    """
+    return get_user_hubs_by_category(db, category)
